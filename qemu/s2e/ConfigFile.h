@@ -46,6 +46,14 @@ extern "C" {
 #include <lualib.h>
 }
 
+#define LLVM_VERSION(major, minor) (((major) << 8) | (minor))
+#define LLVM_VERSION_CODE LLVM_VERSION(3, 2)
+
+#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 0)
+#  define LLVM_TYPE_Q
+#else
+#  define LLVM_TYPE_Q const
+#endif
 namespace s2e {
 class S2EExecutionState;
 

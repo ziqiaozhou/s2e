@@ -274,7 +274,16 @@ static const char *index(const char *str, char c) {
   return NULL;
 }
 #endif
-
+void KModule::addInternalFunction(const char* functionName){
+	Function* internalFunction = module->getFunction(functionName);
+	if (!internalFunction) {
+		//KLEE_DEBUG(klee_warning(
+						//"Failed to add internal function %s. Not found.", functionName));
+		return ;
+	}
+	//KLEE_DEBUG(klee_message("Added function %s.",functionName));
+	internalFunctions.insert(internalFunction);
+}
 void KModule::prepare(const Interpreter::ModuleOptions &opts,
                       InterpreterHandler *ih) {
   if (!MergeAtExit.empty()) {
@@ -372,8 +381,9 @@ void KModule::prepare(const Interpreter::ModuleOptions &opts,
              ie = opts.ExtraLibraries.end(); it != ie; ++it) {
       module = linkWithLibrary(module, *it);
   }
-
-  // Needs to happen after linking (since ctors/dtors can be modified)
+  if (opts.CheckDivZero)
+	    addInternalFunction("klee_div_zero_check");
+   // Needs to happen after linking (since ctors/dtors can be modified)
   // and optimization (since global optimization can rewrite lists).
   injectStaticConstructorsAndDestructors(module);
 

@@ -487,6 +487,8 @@ s2eobj-y += s2e/Plugins/ExecutionTracers/ExecutionTracer.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/ModuleTracer.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/EventTracer.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/TestCaseGenerator.o
+
+s2eobj-y += s2e/Plugins/ExecutionTracers/Writer.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/InstructionCounter.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/TranslationBlockTracer.o
 s2eobj-y += s2e/Plugins/ExecutionTracers/ExceptionTracer.o

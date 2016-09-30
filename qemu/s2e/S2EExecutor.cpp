@@ -253,7 +253,28 @@ DebugConstraints("debug-constraints",
 
 
 
+ cl::opt<bool>
+   WritePCs("write-pcs",
+			               cl::desc("Write .pc files for each test case"));
+cl::opt<bool>
+  WriteSMT2s("write-smt2s",
+			              cl::desc("Write .smt2 (SMT-LIBv2) files for each test case"));
 
+  cl::opt<bool>
+    WriteCov("write-cov",
+				           cl::desc("Write coverage information for each test case"));
+
+  cl::opt<bool>
+    WriteTestInfo("write-test-info",
+				                cl::desc("Write additional test case information"));
+
+  cl::opt<bool>
+    WritePaths("write-paths",
+				                cl::desc("Write .path files for each test case"));
+
+  cl::opt<bool>
+    WriteSymPaths("write-sym-paths",
+				                cl::desc("Write .sym.path files for each test case"));
 extern cl::opt<bool> UseExprSimplifier;
 
 extern "C" {
@@ -696,7 +717,7 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
     __DEFINE_EXT_FUNCTION(cpu_restore_state)
     __DEFINE_EXT_FUNCTION(cpu_abort)
     __DEFINE_EXT_FUNCTION(cpu_loop_exit)
-
+__DEFINE_EXT_FUNCTION(cpu_loop_exit_restore)
     __DEFINE_EXT_FUNCTION(tb_find_pc)
 
     __DEFINE_EXT_FUNCTION(qemu_system_reset_request)
@@ -1471,8 +1492,8 @@ ExecutionState* S2EExecutor::selectNonSpeculativeState(S2EExecutionState *state)
     } while(newState->isSpeculative());
 
     if (!newState) {
-        m_s2e->getWarningsStream() << "All states were terminated" << '\n';
-        foreach(S2EExecutionState* s, m_deletedStates) {
+		m_s2e->getWarningsStream() << "All states were terminated" << '\n';
+			foreach(S2EExecutionState* s, m_deletedStates) {
             //Leave the current state in a zombie form to let QEMU exit gracefully.
             if (s != g_s2e_state) {
                 unrefS2ETb(s->m_lastS2ETb);

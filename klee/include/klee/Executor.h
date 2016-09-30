@@ -399,7 +399,9 @@ public:
   const InterpreterHandler& getHandler() {
     return *interpreterHandler;
   }
-
+  KModule * getKModule(){
+	  return kmodule;
+  }
   // Fork current and return states in which condition holds / does
   // not hold, respectively. One of the states is necessarily the
   // current state, and one of the states may be null.

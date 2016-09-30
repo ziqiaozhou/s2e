@@ -105,7 +105,8 @@ namespace klee {
     KConstant* getKConstant(llvm::Constant *c);
 
     std::vector<Cell> constantTable;
-
+	std::set<const llvm::Function*> internalFunctions;
+	 void addInternalFunction(const char* functionName);
   protected:
     KModulePrivate *p;
 
