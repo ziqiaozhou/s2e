@@ -85,164 +85,166 @@
 using namespace llvm;
 using namespace klee;
 namespace s2e {
-namespace plugins {
+	namespace plugins {
 
-S2E_DEFINE_PLUGIN(Writer, " Writer plugin", "Writer", "ExecutionTracer");
+		S2E_DEFINE_PLUGIN(Writer, " Writer plugin", "Writer", "ExecutionTracer");
 
-Writer::Writer(S2E* s2e)
-        : Plugin(s2e)
-{
-    m_testIndex = 0;
-    m_pathsExplored = 0;
-	WritePC=false;
-	WriteSymPath=false;
-	symPathWriter=0;
-}
+		Writer::Writer(S2E* s2e)
+			: Plugin(s2e)
+		{
+			m_testIndex = 0;
+			m_pathsExplored = 0;
+			WritePC=false;
+			WriteSymPath=false;
+			symPathWriter=0;
+			OnlyOutputStatesCoveringNew=false;
+		}
 
-void Writer::initialize()
-{
-	ConfigFile *cfg = s2e()->getConfig();
+		void Writer::initialize()
+		{
+			ConfigFile *cfg = s2e()->getConfig();
 
-	WritePC = cfg->getInt(getConfigKey() + ".write_pcs")>0?true:false;
-	WriteSymPath=cfg->getBool(getConfigKey() + ".write_sym_paths");
-	if(WriteSymPath){
-		symPathWriter = new klee::TreeStreamWriter(s2e()->getOutputFilename("symPaths.ts"));
-		s2e()->getExecutor()->setSymbolicPathWriter(symPathWriter);
-		s2e()->getCorePlugin()->onStateFork.connect(
-					sigc::mem_fun(*this, &Writer::stateFork));
+			WritePC = cfg->getInt(getConfigKey() + ".write_pcs")>0?true:false;
+			WriteSymPath=cfg->getBool(getConfigKey() + ".write_sym_paths");
+OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
+			if(WriteSymPath){
+				symPathWriter = new klee::TreeStreamWriter(s2e()->getOutputFilename("symPaths.ts"));
+				s2e()->getExecutor()->setSymbolicPathWriter(symPathWriter);
+				s2e()->getCorePlugin()->onStateFork.connect(
+							sigc::mem_fun(*this, &Writer::stateFork));
 
-	}
-	s2e()->getCorePlugin()->onTestCaseGeneration.connect(
-				sigc::mem_fun(*this, &Writer::stateTerminate));
+			}
+			s2e()->getCorePlugin()->onStateKill.connect(
+						sigc::mem_fun(*this, &Writer::stateTerminate));
 
-}
-std::string Writer::GotoLine(std::fstream& file, unsigned int num){
-		std::string line;
+		}
+		std::string Writer::GotoLine(std::fstream& file, unsigned int num){
+			std::string line;
 			for(int nline=0;nline<num;nline++){
-						getline(file,line);
-							}
-				return line;
-}
-const InstructionInfo &Writer::getLastNonKleeInternalInstruction(KModule *kmodule,const ExecutionState &state,
-			Instruction ** lastInstruction) {
-	// unroll the stack of the applications state and find
-	//   // the last instruction which is not inside a KLEE internal function
-	ExecutionState::stack_ty::const_reverse_iterator it = state.stack.rbegin(),
-	itE = state.stack.rend();
-	//
-	//// don't check beyond the outermost function (i.e. main())
-	itE--;
-	//
-	const InstructionInfo * ii = 0;
-	if (kmodule->internalFunctions.count(it->kf->function) == 0){
-		ii =  state.prevPC->info;
-		*lastInstruction = state.prevPC->inst;
-		//  Cannot return yet because even though
-		//                                   //  it->function is not an internal function it might of
-		//                                       //  been called from an internal function.
+				getline(file,line);
+			}
+			return line;
 		}
-		//                                           // Wind up the stack and check if we are in a KLEE internal function.
-		//                                             // We visit the entire stack because we want to return a CallInstruction
-		//                                               // that was not reached via any KLEE internal functions.
-	for (;it != itE; ++it) {
-		//                                                     // check calling instruction and if it is contained in a KLEE internal function
-		const Function * f = (*it->caller).inst->getParent()->getParent();
-		if (kmodule->internalFunctions.count(f)){
-			ii=0;
-			continue;
-		}
-		if (!ii){
-			ii = (*it->caller).info;
-			*lastInstruction = (*it->caller).inst;
-		}
-	}
+		const InstructionInfo &Writer::getLastNonKleeInternalInstruction(KModule *kmodule,const ExecutionState &state,
+					Instruction ** lastInstruction) {
+			// unroll the stack of the applications state and find
+			//   // the last instruction which is not inside a KLEE internal function
+			ExecutionState::stack_ty::const_reverse_iterator it = state.stack.rbegin(),
+			itE = state.stack.rend();
+			//
+			//// don't check beyond the outermost function (i.e. main())
+			itE--;
+			//
+			const InstructionInfo * ii = 0;
+			if (kmodule->internalFunctions.count(it->kf->function) == 0){
+				ii =  state.prevPC->info;
+				*lastInstruction = state.prevPC->inst;
+				//  Cannot return yet because even though
+				//                                   //  it->function is not an internal function it might of
+				//                                       //  been called from an internal function.
+			}
+			//                                           // Wind up the stack and check if we are in a KLEE internal function.
+			//                                             // We visit the entire stack because we want to return a CallInstruction
+			//                                               // that was not reached via any KLEE internal functions.
+			for (;it != itE; ++it) {
+				//                                                     // check calling instruction and if it is contained in a KLEE internal function
+				const Function * f = (*it->caller).inst->getParent()->getParent();
+				if (kmodule->internalFunctions.count(f)){
+					ii=0;
+					continue;
+				}
+				if (!ii){
+					ii = (*it->caller).info;
+					*lastInstruction = (*it->caller).inst;
+				}
+			}
 
-	if (!ii) {
-		//                                                                                                         // something went wrong, play safe and return the current instruction info
-		*lastInstruction = state.prevPC->inst;
-		return *state.prevPC->info;
-	}
-	return *ii;
-}
-std::string Writer::getCurrentLine(KModule* kmodule,ExecutionState * state){
-	struct stat info;
-	std::stringstream msg;
-	Instruction * lastInst;
-	const InstructionInfo &ii = getLastNonKleeInternalInstruction(kmodule,*state, &lastInst);
-	if (ii.file != ""){
-		std::string filename=ii.file;
-		if(stat(filename.c_str(), &info )!=0){	
-		std::fstream file(filename.c_str());
-		std::string linestr=GotoLine(file,ii.line);
-		if (filename.find("linux-3.18.37")>-1){
-			msg<<"("<<linestr<<")\t"<<filename.substr(filename.find("linux-3.18.37")+strlen("linux-3.18.37"),filename.length())<<":"<<ii.line;
-		}else{
-			msg<<"("<<linestr<<")\t"<<filename<<":"<<ii.line;
+			if (!ii) {
+				//                                                                                                         // something went wrong, play safe and return the current instruction info
+				*lastInstruction = state.prevPC->inst;
+				return *state.prevPC->info;
+			}
+			return *ii;
 		}
-		file.close();
-		}else{
-			msg<<filename<<":"<<ii.line;
+		std::string Writer::getCurrentLine(KModule* kmodule,ExecutionState * state){
+			struct stat info;
+			std::stringstream msg;
+			Instruction * lastInst;
+			const InstructionInfo &ii = getLastNonKleeInternalInstruction(kmodule,*state, &lastInst);
+			if (ii.file != ""){
+				std::string filename=ii.file;
+				if(stat(filename.c_str(), &info )!=0){	
+					std::fstream file(filename.c_str());
+					std::string linestr=GotoLine(file,ii.line);
+					if (filename.find("linux-3.18.37")>-1){
+						msg<<"("<<linestr<<")\t"<<filename.substr(filename.find("linux-3.18.37")+strlen("linux-3.18.37"),filename.length())<<":"<<ii.line;
+					}else{
+						msg<<"("<<linestr<<")\t"<<filename<<":"<<ii.line;
+					}
+					file.close();
+				}else{
+					msg<<filename<<":"<<ii.line;
+				}
+			}
+			else{
+				msg<<"no file info";
+			}
+			return msg.str();
 		}
-	}
-	else{
-		msg<<"no file info";
-	}
-	return msg.str();
-}
-void Writer::stateFork(S2EExecutionState *state,
-			const std::vector<S2EExecutionState*>& newStates,
-			const std::vector<klee::ref<klee::Expr> >& newConditions){
-	KModule* kmodule=s2e()->getExecutor()->getKModule();
-		if(symPathWriter){
-		S2EExecutionState* trueState=newStates[0],* falseState=newStates[1];//truestate==state
-		std::string a="";
-		falseState->symPathOS = symPathWriter->open(state->symPathOS);
-		std::string line=getCurrentLine(kmodule,state);
-		trueState->symPathOS<<"1"<<"->"<<line<<"\n";
-		falseState->symPathOS<<"0"<<"->"<<line<<"\n";
+		void Writer::stateFork(S2EExecutionState *state,
+					const std::vector<S2EExecutionState*>& newStates,
+					const std::vector<klee::ref<klee::Expr> >& newConditions){
+			KModule* kmodule=s2e()->getExecutor()->getKModule();
+			if(symPathWriter){
+				S2EExecutionState* trueState=newStates[0],* falseState=newStates[1];//truestate==state
+				std::string a="";
+				falseState->symPathOS = symPathWriter->open(state->symPathOS);
+				std::string line=getCurrentLine(kmodule,state);
+				trueState->symPathOS<<"1"<<"->"<<line<<"\n";
+				falseState->symPathOS<<"0"<<"->"<<line<<"\n";
+			}
 		}
-}
-void Writer::stateTerminate(S2EExecutionState *state, const std::string &message)
-{
-
-	ConcreteInputs out;
-    bool success = s2e()->getExecutor()->getSymbolicSolution(*state, out);
+		void Writer::stateTerminate(S2EExecutionState *state)
+		{
+			if(OnlyOutputStatesCoveringNew||state->coveredNew){
+				ConcreteInputs out;
+				bool success = s2e()->getExecutor()->getSymbolicSolution(*state, out);
 
 #if 0
-	foreach2(it, state.constraints.begin(), state.constraints.end()) {
-	s2e()->getMessagesStream() << "Constraint: " << std::hex << *it << '\n';
-	}
+				foreach2(it, state.constraints.begin(), state.constraints.end()) {
+					s2e()->getMessagesStream() << "Constraint: " << std::hex << *it << '\n';
+				}
 #endif
-	S2EExecutor *executor=s2e()->getExecutor();
-	if (!success) {
-		s2e()->getWarningsStream() << "Could not get symbolic solutions" << '\n';
-		return;
-	}
-	if ( WritePC) {
-		std::string constraints;
-		executor->getConstraintLog(*state, constraints,false);
-		std::string a="";
-		llvm::raw_string_ostream name(a);
-		name<<state->getID()<<".pc";
-		llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
-		*f << constraints;
-		delete f;
-	}
-	if (symPathWriter) {
-		std::vector<unsigned char> symbolicBranches;
-		symPathWriter->readStream(executor->getSymbolicPathStreamID(*state),
-					symbolicBranches);
-		std::string a="";
-		llvm::raw_string_ostream name(a);
-		name<<state->getID()<<".sym.path";
-		llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
-		for (std::vector<unsigned char>::iterator I = symbolicBranches.begin(), E = symbolicBranches.end(); I!=E; ++I) {
-			*f << *I ;
+				S2EExecutor *executor=s2e()->getExecutor();
+				if (!success) {
+					s2e()->getWarningsStream() << "Could not get symbolic solutions" << '\n';
+					return;
+				}
+				if ( WritePC) {
+					std::string constraints;
+					executor->getConstraintLog(*state, constraints,false);
+					std::string a="";
+					llvm::raw_string_ostream name(a);
+					name<<state->getID()<<".pc";
+					llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
+					*f << constraints;
+					delete f;
+				}
+				if (symPathWriter) {
+					std::vector<unsigned char> symbolicBranches;
+					symPathWriter->readStream(executor->getSymbolicPathStreamID(*state),
+								symbolicBranches);
+					std::string a="";
+					llvm::raw_string_ostream name(a);
+					name<<state->getID()<<".sym.path";
+					llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
+					for (std::vector<unsigned char>::iterator I = symbolicBranches.begin(), E = symbolicBranches.end(); I!=E; ++I) {
+						*f << *I ;
+					}
+					delete f;
+				}
+				s2e()->getMessagesStream() << '\n';
+			}
 		}
-		delete f;
 	}
-	s2e()->getMessagesStream() << '\n';
-
-}
-}
 }

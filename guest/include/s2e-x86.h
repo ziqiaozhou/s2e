@@ -99,6 +99,14 @@ static inline void s2e_print_expression(const char *name, int expression)
         : : "a" (expression), "c" (name)
     );
 }
+static inline  void s2e_make_observable(const char *name, int expression)
+{
+    __s2e_touch_string(name);
+    __asm__ __volatile__(
+        S2E_INSTRUCTION_COMPLEX(07, 01)
+        : : "a" (expression), "c" (name)
+    );
+}
 
 /** Enable forking on symbolic conditions. */
 static inline void s2e_enable_forking(void)

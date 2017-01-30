@@ -479,6 +479,8 @@ s2eobj-win-y += s2e/Plugins/WindowsApi/WindowsDriverExerciser.o
 #s2eobj-y = s2e/Base.o
 s2eobj-y =
 s2eobj-y += s2e/Signals/signals.o
+
+s2eobj-y += s2e/Plugins/BaseInstructionsOb.o
 s2eobj-y += s2e/Plugins/BaseInstructions.o
 s2eobj-y += s2e/Plugin.o s2e/Plugins/CorePlugin.o s2e/Plugins/Example.o
 #s2eobj-y += s2e/Plugins/PluginInterface.o
@@ -552,6 +554,7 @@ s2e/Plugins/ExecutionTrace.o : QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/RawMonitor.o s2e/Plugins/FunctionMonitor.o: QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/CacheSim.o: QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/BaseInstructions.o: QEMU_CXXFLAGS+=-fno-inline
+s2e/Plugins/BaseInstructionsOb.o: QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/Debugger.o: QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/ExecutionTracers/CallRetTracer.o: QEMU_CXXFLAGS+=-fno-inline
 s2e/Plugins/ExecutionTracers/InstructionCounter.o: QEMU_CXXFLAGS+=-fno-inline

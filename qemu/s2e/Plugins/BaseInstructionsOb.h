@@ -33,38 +33,70 @@
  * All contributors are listed in the S2E-AUTHORS file.
  */
 
-#ifndef S2E_PLUGINS_TCGEN_H
-#define S2E_PLUGINS_TCGEN_H
+#ifndef S2E_PLUGINS_CUSTINST_H
+
+#define S2E_PLUGINS_CUSTINST_H
 
 #include <s2e/Plugin.h>
-#include <string>
+#include <s2e/Plugins/CorePlugin.h>
+#include <s2e/S2EExecutionState.h>
 
-namespace s2e{
-namespace plugins{
+namespace s2e {
+namespace plugins {
 
-/** Handler required for KLEE interpreter */
-class TestCaseGenerator : public Plugin
+class BaseInstructionsOb : public Plugin
 {
     S2E_PLUGIN
-
-private:
-    typedef std::pair<std::string, std::vector<unsigned char> > VarValuePair;
-    typedef std::vector<VarValuePair> ConcreteInputs;
-
-    unsigned m_testIndex;  // number of tests written so far
-    unsigned m_pathsExplored; // number of paths explored so far
-	bool WritePC;
 public:
-    TestCaseGenerator(S2E* s2e);
+    BaseInstructionsOb(S2E* s2e): Plugin(s2e) {}
 
     void initialize();
+   
+    void handleBuiltInOps(S2EExecutionState* state, 
+        uint64_t opcode);
 
 private:
-    void onTestCaseGeneration(S2EExecutionState *state, const std::string &message);
+    void onCustomInstruction(S2EExecutionState* state, 
+        uint64_t opcode);
+    void invokePlugin(S2EExecutionState *state);
+    void makeSymbolic(S2EExecutionState *state, bool makeConcolic);
+    void isSymbolic(S2EExecutionState *state);
+    void killState(S2EExecutionState *state);
+    void printOb(S2EExecutionState *state);
+    void printMessage(S2EExecutionState *state, bool isWarning);
+    void printMemory(S2EExecutionState *state);
+    void concretize(S2EExecutionState *state, bool addConstraint);
+    void sleep(S2EExecutionState *state);
+    void assume(S2EExecutionState *state);
+
+#ifdef TARGET_ARM
+
+#define PARAM0 CPU_OFFSET(regs[0])
+#define PARAM1 CPU_OFFSET(regs[1])
+#define PARAM2 CPU_OFFSET(regs[2])
+#define PARAM3 CPU_OFFSET(regs[3])
+
+#elif defined(TARGET_I386)
+
+#define PARAM0 CPU_OFFSET(regs[R_EAX])
+#define PARAM1 CPU_OFFSET(regs[R_EBX])
+#define PARAM2 CPU_OFFSET(regs[R_ECX])
+#define PARAM3 CPU_OFFSET(regs[R_EDX])
+
+#else
+#error "Target architecture not supported"
+#endif
+
 };
 
+class BaseInstructionsObPluginInvokerInterface {
+public:
+    virtual void handleOpcodeInvocation(S2EExecutionState *state,
+                                        uint64_t guestDataPtr,
+                                        uint64_t guestDataSize) = 0;
+};
 
-}
-}
+} // namespace plugins
+} // namespace s2e
 
 #endif

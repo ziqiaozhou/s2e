@@ -50,6 +50,8 @@ ifeq ($(wildcard qemu/vl.c),qemu/vl.c)
 endif
 
 
+LLVM_VERSION_MAJOR = @LLVM_VERSION_MAJOR@
+LLVM_VERSION_MINOR = @LLVM_VERSION_MINOR@
 LLVM_VERSION=3.2
 LLVM_SRC=llvm-$(LLVM_VERSION).src.tar.gz
 LLVM_SRC_DIR=llvm-$(LLVM_VERSION).src

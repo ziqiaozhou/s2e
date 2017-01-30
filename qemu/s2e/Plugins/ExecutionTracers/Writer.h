@@ -55,6 +55,7 @@ private:
     unsigned m_pathsExplored; // number of paths explored so far
 	bool WritePC;
 	bool WriteSymPath;
+	bool OnlyOutputStatesCoveringNew;
 	klee::TreeStreamWriter* symPathWriter;
 public:
     Writer(S2E* s2e);
@@ -62,7 +63,7 @@ public:
     void initialize();
 
 private:
-	void stateTerminate(S2EExecutionState *state, const std::string &message);
+	void stateTerminate(S2EExecutionState *state);
     void stateFork(S2EExecutionState *state,
 				            const std::vector<S2EExecutionState*>& newStates,
 							const std::vector<klee::ref<klee::Expr> >& newConditions);

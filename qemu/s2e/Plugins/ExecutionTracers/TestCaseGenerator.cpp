@@ -40,9 +40,10 @@
 #include <s2e/Utils.h>
 #include <s2e/S2EExecutionState.h>
 #include <s2e/S2EExecutor.h>
+#include <s2e/ConfigFile.h>
 #include "TestCaseGenerator.h"
 #include "ExecutionTracer.h"
-
+#include "llvm/Support/raw_ostream.h"
 namespace s2e {
 namespace plugins {
 
@@ -53,16 +54,18 @@ TestCaseGenerator::TestCaseGenerator(S2E* s2e)
 {
     m_testIndex = 0;
     m_pathsExplored = 0;
-
+	WritePC=false;
 }
 
 void TestCaseGenerator::initialize()
 {
-    s2e()->getCorePlugin()->onTestCaseGeneration.connect(
-            sigc::mem_fun(*this, &TestCaseGenerator::onTestCaseGeneration));
+	ConfigFile *cfg = s2e()->getConfig();
+
+	WritePC = cfg->getInt(getConfigKey() + ".write_pcs")>0?true:false;
+	s2e()->getCorePlugin()->onTestCaseGeneration.connect(
+				sigc::mem_fun(*this, &TestCaseGenerator::onTestCaseGeneration));
+	
 }
-
-
 void TestCaseGenerator::onTestCaseGeneration(S2EExecutionState *state, const std::string &message)
 {
     s2e()->getMessagesStream()
@@ -72,17 +75,26 @@ void TestCaseGenerator::onTestCaseGeneration(S2EExecutionState *state, const std
 
     ConcreteInputs out;
     bool success = s2e()->getExecutor()->getSymbolicSolution(*state, out);
-
-    if (!success) {
-        s2e()->getWarningsStream() << "Could not get symbolic solutions" << '\n';
-        return;
-    }
-
+	
 #if 0
     foreach2(it, state.constraints.begin(), state.constraints.end()) {
-        s2e()->getMessagesStream() << "Constraint: " << std::hex << *it << '\n';
-    }
+		s2e()->getMessagesStream() << "Constraint: " << std::hex << *it << '\n';
+	}
 #endif
+	if ( WritePC) {
+		std::string constraints;
+		s2e()->getExecutor()->getConstraintLog(*state, constraints,false);
+		std::string a="";
+		llvm::raw_string_ostream name(a);
+		name<<state->getID()<<".pc";
+		llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
+		*f << constraints;
+		delete f;
+	}
+	if (!success) {
+		s2e()->getWarningsStream() << "Could not get symbolic solutions" << '\n';
+		return;
+    }
 
     s2e()->getMessagesStream() << '\n';
 
