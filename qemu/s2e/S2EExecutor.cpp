@@ -717,7 +717,8 @@ S2EExecutor::S2EExecutor(S2E* s2e, TCGLLVMContext *tcgLLVMContext,
     __DEFINE_EXT_FUNCTION(cpu_restore_state)
     __DEFINE_EXT_FUNCTION(cpu_abort)
     __DEFINE_EXT_FUNCTION(cpu_loop_exit)
-__DEFINE_EXT_FUNCTION(cpu_loop_exit_restore)
+    __DEFINE_EXT_FUNCTION(cpu_loop_exit_restore)
+
     __DEFINE_EXT_FUNCTION(tb_find_pc)
 
     __DEFINE_EXT_FUNCTION(qemu_system_reset_request)
@@ -769,6 +770,15 @@ __DEFINE_EXT_FUNCTION(cpu_loop_exit_restore)
 
     __DEFINE_EXT_FUNCTION(ldq_phys)
     __DEFINE_EXT_FUNCTION(stq_phys)
+
+    __DEFINE_EXT_FUNCTION(floatx80_to_float64)
+    __DEFINE_EXT_FUNCTION(float64_to_floatx80)
+    __DEFINE_EXT_FUNCTION(int32_to_floatx80)
+    __DEFINE_EXT_FUNCTION(int64_to_floatx80)
+    __DEFINE_EXT_FUNCTION(floatx80_mul)
+    __DEFINE_EXT_FUNCTION(floatx80_add)
+    __DEFINE_EXT_FUNCTION(floatx80_compare_quiet)
+    __DEFINE_EXT_FUNCTION(set_float_rounding_mode)
 
 #if 0
     //Implementing these functions prevents special function handler
@@ -996,8 +1006,8 @@ S2EExecutionState* S2EExecutor::createInitialState()
     __DEFINE_EXT_OBJECT_RO(g_s2e)
     __DEFINE_EXT_OBJECT_RO(g_s2e_state)
     //__DEFINE_EXT_OBJECT_RO(g_s2e_exec_ret_addr)
-    __DEFINE_EXT_OBJECT_RO(io_mem_read)
-    __DEFINE_EXT_OBJECT_RO(io_mem_write)
+    __DEFINE_EXT_FUNCTION(io_mem_read)
+    __DEFINE_EXT_FUNCTION(io_mem_write)
     //__DEFINE_EXT_OBJECT_RO(io_mem_opaque)
     __DEFINE_EXT_OBJECT_RO(use_icount)
     __DEFINE_EXT_OBJECT_RO(cpu_single_env)
