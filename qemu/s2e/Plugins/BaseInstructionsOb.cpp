@@ -233,6 +233,7 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
 
     ref<Expr> val = state->readCpuRegister(PARAM0, width);
     ok &= state->readCpuRegisterConcrete(PARAM2, &name, sizeof name);
+
 	std::string a="";
 	llvm::raw_string_ostream filename(a);
 	filename<<state->getID()<<".observable";
@@ -250,6 +251,7 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
 			<< "Error reading string from the guest\n";
 		filename<<".err";
 	}
+
 	std::string path = s2e()->getOutputFilename(filename.str());
 	std::string error;
 	llvm::raw_fd_ostream *f = new llvm::raw_fd_ostream(path.c_str(), error, llvm::raw_fd_ostream::F_Binary| llvm::raw_fd_ostream::F_Append);
@@ -258,9 +260,11 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
 		llvm::errs() << "Error opening " << path << ": " << error << "\n";
 		exit(-1);
 	}
-    *f
-	<< nameStr << " : "
-                               <<val << '\n';
+    
+	state->pushOb(nameStr,val);
+	*f
+	<<"(Eq "<< nameStr << "  "
+                               <<val << ")\n";
 	s2e()->getWarningsStream()<< nameStr << " : "
                                <<val << '\n';
 

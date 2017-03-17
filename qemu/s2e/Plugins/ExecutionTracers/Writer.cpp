@@ -220,14 +220,33 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 					s2e()->getWarningsStream() << "Could not get symbolic solutions" << '\n';
 					return;
 				}
+				std::string obstr="";
+				llvm::raw_string_ostream obstrs(obstr);
+
+				for(unsigned i=0;i<state->observables.size();i++){
+					obstrs<<"(Eq "<<state->observables[i].name<<" "<<state->observables[i].expr<<")\n";
+				}
+
 				if ( WritePC) {
 					std::string constraints;
+					std:: string declarestr="";
+					llvm::raw_string_ostream declarestrs(declarestr);
 					executor->getConstraintLog(*state, constraints,false);
 					std::string a="";
 					llvm::raw_string_ostream name(a);
 					name<<state->getID()<<".pc";
 					llvm::raw_ostream *f = s2e()->openOutputFile(name.str());
+					for(std::vector<std::pair<const MemoryObject *, const Array *> >::iterator it= state->symbolics.begin();it!=state->symbolics.end();++it){
+								declarestrs<<"array "<<it->second->name<<"["<<it->second->size<<"]: w32 -> w8 = symbolic\n";
+					}
 					*f << constraints;
+					int assert_index=constraints.rfind("]");
+					constraints.insert(assert_index,"\n"+obstrs.str());
+					name<<"0";
+					llvm::raw_ostream *f2 = s2e()->openOutputFile(name.str());
+					*f2<<declarestrs.str()<<constraints;
+					delete f2;
+					f2=NULL;
 					delete f;
 				}
 				if (symPathWriter) {

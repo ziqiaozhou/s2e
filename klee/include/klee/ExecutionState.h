@@ -22,7 +22,6 @@
 #include <map>
 #include <set>
 #include <vector>
-
 namespace klee {
   class Array;
   class CallPathNode;
@@ -34,7 +33,26 @@ namespace klee {
   struct InstructionInfo;
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MemoryMap &mm);
+  class Tuple{
 
+	  public:
+	  std::string name;
+	  ref<Expr> expr;
+
+	  Tuple(std::string n,ref<Expr>e){
+		  name=n;
+		  expr=e;
+	  }
+	  ~Tuple(){
+	  }
+	  std::string get_name(){
+	  return name;
+	  }
+	  ref<Expr> get_expr(){
+		  return expr;
+	  }
+
+  };
 struct StackFrame {
   KInstIterator caller;
   KFunction *kf;
@@ -68,6 +86,7 @@ class ExecutionState {
 public:
   typedef std::vector<StackFrame> stack_ty;
 
+ std::vector<Tuple> observables;
 private:
   // unsupported, use copy constructor
   ExecutionState &operator=(const ExecutionState&); 
@@ -140,6 +159,10 @@ public:
   void pushFrame(KInstIterator caller, KFunction *kf);
   void popFrame();
 
+  void pushOb(std::string name,ref<Expr>expr){
+	  Tuple tuple(name,expr);
+	  observables.push_back(tuple);
+  }
   void addSymbolic(const MemoryObject *mo, const Array *array) { 
     symbolics.push_back(std::make_pair(mo, array));
   }
