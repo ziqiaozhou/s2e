@@ -250,7 +250,7 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 					delete f;
 				}
 				if (symPathWriter) {
-					std::vector<unsigned char> symbolicBranches;
+					/*std::vector<unsigned char> symbolicBranches;
 					symPathWriter->readStream(executor->getSymbolicPathStreamID(*state),
 								symbolicBranches);
 					std::string a="";
@@ -260,7 +260,7 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 					for (std::vector<unsigned char>::iterator I = symbolicBranches.begin(), E = symbolicBranches.end(); I!=E; ++I) {
 						*f << *I ;
 					}
-					delete f;
+					delete f;*/
 				}
 				s2e()->getMessagesStream() << '\n';
 			}
