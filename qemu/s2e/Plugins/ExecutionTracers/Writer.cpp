@@ -224,6 +224,7 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 				llvm::raw_string_ostream obstrs(obstr);
 
 				for(unsigned i=0;i<state->observables.size();i++){
+					klee_warning("concat onservables %s",obstrs.str().c_str());
 					obstrs<<"(Eq "<<state->observables[i].name<<" "<<state->observables[i].expr<<")\n";
 				}
 
@@ -231,6 +232,7 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 					std::string constraints;
 					std:: string declarestr="";
 					llvm::raw_string_ostream declarestrs(declarestr);
+					klee_warning("write onservables");
 					executor->getConstraintLog(*state, constraints,false);
 					std::string a="";
 					llvm::raw_string_ostream name(a);

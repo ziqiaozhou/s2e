@@ -99,7 +99,6 @@ void DFSSearcher::update(ExecutionState *current,
   if (firstTime) {
       currentState = states[0];
   }
-
 }
 
 ///
@@ -324,6 +323,12 @@ Instruction *BumpMergingSearcher::getMergePoint(ExecutionState &es) {
         return i;
     }
   }
+ if(es.try_merge){
+	  Instruction *i = es.pc->inst;
+	  //klee_warning("try merge %lx,code=%s\n",i,i->getOpcodeName());	
+	  //es.try_merge=false;
+	  return i;
+  }
 
   return 0;
 }
@@ -331,14 +336,13 @@ Instruction *BumpMergingSearcher::getMergePoint(ExecutionState &es) {
 ExecutionState &BumpMergingSearcher::selectState() {
 entry:
   // out of base states, pick one to pop
-  if (baseSearcher->empty()) {
-    std::map<llvm::Instruction*, ExecutionState*>::iterator it = 
-      statesAtMerge.begin();
-    ExecutionState *es = it->second;
-    statesAtMerge.erase(it);
-    ++es->pc;
-
-    baseSearcher->addState(es);
+	if (baseSearcher->empty()) {
+		std::map<llvm::Instruction*, ExecutionState*>::iterator it = 
+			statesAtMerge.begin();
+		ExecutionState *es = it->second;
+		statesAtMerge.erase(it);
+		++es->pc;
+		baseSearcher->addState(es);
   }
 
   ExecutionState &es = baseSearcher->selectState();
@@ -360,7 +364,10 @@ entry:
         executor.terminateState(es);
       } else {
         it->second = &es; // the bump
-        ++mergeWith->pc;
+       if(!mergeWith->try_merge)
+		++mergeWith->pc;
+	   else
+		 mergeWith->try_merge=false;
 
         baseSearcher->addState(mergeWith);
       }
@@ -398,9 +405,15 @@ uint64_t MergingSearcher::getMergePoint(ExecutionState &es) {
 
     if (i->getOpcode()==Instruction::Call) {
       CallSite cs(cast<CallInst>(i));
-      if (mergeFunction==cs.getCalledFunction())
-        return (uint64_t) i;
-    }
+	  if (mergeFunction==cs.getCalledFunction())
+		return (uint64_t) i;
+	}
+  }
+  if(es.try_merge){
+	  Instruction *i = es.pc->inst;
+
+	  //es.try_merge=false;
+	  return (uint64_t)i;
   }
 
   return 0;
@@ -412,13 +425,16 @@ void MergingSearcher::queueStateForMerge(ExecutionState &es, uint64_t mergePoint
 }
 
 ExecutionState &MergingSearcher::selectState() {
+	int loop=0;
   while (!baseSearcher->empty()) {
     ExecutionState &es = baseSearcher->selectState();
     uint64_t mp = getMergePoint(es);
     if (mp) {
-      baseSearcher->removeState(&es, &es);
-      statesAtMerge.insert(std::make_pair(&es, mp));
-    } else {
+		klee_warning("inside mp state=%lx try merge %lx, loop=%d\n",&es,mp,loop);	
+		loop++;
+		baseSearcher->removeState(&es, &es);
+		statesAtMerge.insert(std::make_pair(&es, mp));
+	} else {
       return es;
     }
   }
@@ -474,23 +490,32 @@ ExecutionState &MergingSearcher::selectState() {
              ie = toErase.end(); it != ie; ++it) {
         std::set<ExecutionState*>::iterator it2 = toMerge.find(*it);
         assert(it2!=toMerge.end());
-        executor.terminateState(**it);
-        toMerge.erase(it2);
-      }
+		executor.terminateState(**it);
+		toMerge.erase(it2);
+	  }
 
-      // step past merge and toss base back in pool
-      statesAtMerge.erase(statesAtMerge.find(base));
-      ++base->pc;
-      baseSearcher->addState(base);
-    }  
-    if (DebugLogMerge)
-      std::cerr << "\t\t" << mergeCount << " states merged\n";
+	  // step past merge and toss base back in pool
+	  statesAtMerge.erase(statesAtMerge.find(base));
+
+	  klee_warning("before check pc");	
+	  if(!base->try_merge){
+		  ++base->pc;
+	  }else{
+		  klee_warning("%lx: reset try_merge=false",base);
+		  ++base->pc;
+		  base->try_merge=false;
+	  }
+	  baseSearcher->addState(base);
+	}  
+	if (DebugLogMerge)
+	  std::cerr << "\t\t" << mergeCount << " states merged\n";
   }
-  
+
   if (DebugLogMerge) {
     std::cerr << "-- merge complete, continuing --\n";
   }
   
+klee_warning("before selectState()");	
   return selectState();
 }
 

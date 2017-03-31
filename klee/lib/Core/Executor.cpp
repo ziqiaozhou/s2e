@@ -84,6 +84,9 @@ using namespace llvm;
 using namespace klee;
 
 namespace {
+		cl::opt<bool>
+			  UseIfMerge("use-if-merge", 
+										  cl::desc("Enable support for klee_merge() after if (experimental by ziqiao)"));
   cl::opt<bool>
   DumpStatesOnHalt("dump-states-on-halt",
                    cl::init(true));
@@ -1725,16 +1728,32 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       // instruction (it reuses its statistic id). Should be cleaned
       // up with convenient instruction specific data.
       if (statsTracker && state.stack.back().kf->trackCoverage)
-        statsTracker->markBranchVisited(branches.first, branches.second);
+		statsTracker->markBranchVisited(branches.first, branches.second);
 
-      if (branches.first)
-        transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
-      if (branches.second)
-        transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
+	  if (branches.first)
+		transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
+	  if (branches.second)
+		transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
+	  if(UseIfMerge&&branches.first && branches.second){
+		  //merge
+		  branches.first->try_merge=true;
 
-      notifyFork(state, cond, branches);
-    }
-    break;
+		  branches.second->try_merge=true;
+		  /* klee::BumpMergingSearcher *mergeSearcher=(klee::BumpMergingSearcher*) searcher;
+			 -		  Instruction *mp0=cast<Instruction>(bi->getSuccessor(0));
+			 -		  Instruction *mp1= cast<Instruction>(bi->getSuccessor(1));
+			 -		   mergeSearcher->insert(mp0, branches.first);
+			 -
+			 -		   mergeSearcher->insert(mp1, branches.second);
+			 -		  //bi->setSuccessor(0,mergeBlock);
+			 -
+			 -			  // bi->setSuccessor(1,mergeBlock);*/
+	  }
+
+	  notifyFork(state, cond, branches);
+	  
+	}
+	break;
   }
   case Instruction::Switch: {
     SwitchInst *si = cast<SwitchInst>(i);

@@ -1673,15 +1673,32 @@ bool S2EExecutionState::merge(const ExecutionState &_b)
     assert(!m_active && !b.m_active);
 
     llvm::raw_ostream& s = g_s2e->getMessagesStream(this);
-
     if(DebugLogStateMerge)
         s << "Attempting merge with state " << b.getID() << '\n';
 
     if(pc != b.pc) {
-        if(DebugLogStateMerge)
-            s << "merge failed: different pc" << '\n';
-        return false;
-    }
+		if(DebugLogStateMerge)
+		  s << "merge failed: different pc" << '\n';
+		return false;
+	}
+	if(b.mergeObs.size()!=mergeObs.size()){
+		return false;
+	}
+
+	//klee_warning("check observable %d",mergeObs.size());
+	for (unsigned int i=0; i<mergeObs.size(); i++){
+		const MemoryObject * ma=mergeObs[i].second;
+		//const MemoryObject * mb=b.mergeObs[i].second;
+		const ObjectState *os = addressSpace.findObject(ma);
+		const ObjectState *otherOS = b.addressSpace.findObject(ma);
+		for(unsigned i=0;i<ma->size;++i){
+			if(os->read8(i)!=otherOS->read8(i)){
+				s<<"cannot merge because of not same Ob";
+				return false;
+			}
+		}
+	}
+
 
     // XXX is it even possible for these to differ? does it matter? probably
     // implies difference in object states?

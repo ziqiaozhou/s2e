@@ -84,9 +84,11 @@ class ExecutionState {
   friend class AddressSpace;
 
 public:
+  bool try_merge;
   typedef std::vector<StackFrame> stack_ty;
 
  std::vector<Tuple> observables;
+ std::vector<std::pair<std::string,const MemoryObject *> > mergeObs;
 private:
   // unsupported, use copy constructor
   ExecutionState &operator=(const ExecutionState&); 
@@ -163,6 +165,10 @@ public:
 	  Tuple tuple(name,expr);
 	  observables.push_back(tuple);
   }
+  void addMergeOb(std::string name,const MemoryObject * mo){
+	  	  mergeObs.push_back(std::make_pair(name,mo));
+	    }
+
   void addSymbolic(const MemoryObject *mo, const Array *array) { 
     symbolics.push_back(std::make_pair(mo, array));
   }

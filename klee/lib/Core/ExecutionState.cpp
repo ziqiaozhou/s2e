@@ -75,7 +75,9 @@ ExecutionState::ExecutionState(KFunction *kf)
     forkDisabled(false),
     ptreeNode(0),
     concolics(true),
-    speculative(false){
+    speculative(false),
+	try_merge(false)
+{
   pushFrame(0, kf);
 }
 
@@ -87,7 +89,9 @@ ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
     addressSpace(this),
     ptreeNode(0),
     concolics(true),
-    speculative(false) {
+    speculative(false),
+	try_merge(false)
+{
 }
 
 ExecutionState::~ExecutionState() {
@@ -97,6 +101,8 @@ ExecutionState::~ExecutionState() {
 ExecutionState* ExecutionState::clone() {
   ExecutionState* state = new ExecutionState(*this);
   state->addressSpace.state = state;
+  state->mergeObs=mergeObs;
+  state->observables=observables;
   return state;
 }
 
@@ -108,6 +114,7 @@ ExecutionState *ExecutionState::branch() {
   depth++;
 
   ExecutionState *falseState = clone();
+  falseState->try_merge=false;
   falseState->coveredNew = false;
   falseState->coveredLines.clear();
 
@@ -171,15 +178,32 @@ bool ExecutionState::merge(const ExecutionState &b) {
   // XXX is it even possible for these to differ? does it matter? probably
   // implies difference in object states?
   if (symbolics!=b.symbolics)
-    return false;
+	return false;
+
+  if(b.mergeObs.size()!=mergeObs.size()){
+	  return false;
+  }
+
+  //klee_warning("check observable %d",mergeObs.size());
+  for (unsigned int i=0; i<mergeObs.size(); i++){
+	  const MemoryObject * ma=mergeObs[i].second;
+	  const MemoryObject * mb=b.mergeObs[i].second;
+	  const ObjectState *os = addressSpace.findObject(ma);
+	  const ObjectState *otherOS = b.addressSpace.findObject(ma);
+	  for(unsigned i=0;i<ma->size;++i){
+		  if(os->read8(i)!=otherOS->read8(i)){
+			  return false;
+		  }
+	  }
+  }
 
   {
-    std::vector<StackFrame>::const_iterator itA = stack.begin();
-    std::vector<StackFrame>::const_iterator itB = b.stack.begin();
-    while (itA!=stack.end() && itB!=b.stack.end()) {
-      // XXX vaargs?
-      if (itA->caller!=itB->caller || itA->kf!=itB->kf)
-        return false;
+	  std::vector<StackFrame>::const_iterator itA = stack.begin();
+	  std::vector<StackFrame>::const_iterator itB = b.stack.begin();
+	  while (itA!=stack.end() && itB!=b.stack.end()) {
+		  // XXX vaargs?
+		  if (itA->caller!=itB->caller || itA->kf!=itB->kf)
+			return false;
       ++itA;
       ++itB;
     }
