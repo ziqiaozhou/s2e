@@ -228,7 +228,7 @@ OnlyOutputStatesCoveringNew=cfg->getBool(getConfigKey() + ".onlynew");
 					obstrs<<"(Eq "<<state->observables[i].name<<" "<<state->observables[i].expr<<")\n";
 				}
 
-				if ( WritePC) {
+				if (state->earlyExit==false && WritePC) {
 					std::string constraints;
 					std:: string declarestr="";
 					llvm::raw_string_ostream declarestrs(declarestr);

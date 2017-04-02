@@ -25,7 +25,6 @@
 #include "klee/Internal/ADT/RNG.h"
 #include "klee/Internal/Support/ModuleUtil.h"
 #include "klee/Internal/System/Time.h"
-
 #include "llvm/Constants.h"
 #include "llvm/Instructions.h"
 #include "llvm/Module.h"
@@ -55,19 +54,54 @@ Searcher::~Searcher() {
 ///
 
 ExecutionState &DFSSearcher::selectState() {
-    ExecutionState *ret = states.back();
+/*    ExecutionState *ret = states.back();
 
-    if (currentState == NULL) {
+   if (currentState == NULL) {
         currentState = ret;
     }
-
-    return *currentState;
+    return *currentState;*/
+	 return *states.back();
 }
 
 void DFSSearcher::update(ExecutionState *current,
-                         const std::set<ExecutionState*> &addedStates,
-                         const std::set<ExecutionState*> &removedStates) {
-    bool firstTime = states.size() == 0;
+			const std::set<ExecutionState*> &addedStates,
+			const std::set<ExecutionState*> &removedStates) {
+	states.insert(states.end(),
+				addedStates.begin(),
+				addedStates.end());
+
+
+	for (std::set<ExecutionState *>::const_iterator it = removedStates.begin(),
+				ie = removedStates.end();
+				it != ie; ++it) {
+
+		ExecutionState *es = *it;
+		if (es == states.back()) {
+			states.pop_back();
+		} else {
+			bool ok = false;
+
+			for (std::vector<ExecutionState*>::iterator it = states.begin(),
+						ie = states.end(); it != ie; ++it) {
+				if (es==*it) {
+					states.erase(it);
+					ok = true;
+					break;
+				}
+			}
+
+			assert(ok && "invalid state removed");
+		}
+	}
+
+	/*  bool firstTime = states.size() == 0;
+		if (!addedStates.empty() && current &&
+				std::find(removedStates.begin(), removedStates.end(), current) ==
+				removedStates.end()) {
+		assert(states.front() == current);
+		states.pop_front();
+		states.push_back(current);
+	}
     states.insert(states.end(),
                 addedStates.begin(),
                 addedStates.end());
@@ -98,7 +132,7 @@ void DFSSearcher::update(ExecutionState *current,
 
   if (firstTime) {
       currentState = states[0];
-  }
+  }*/
 }
 
 ///
@@ -427,11 +461,13 @@ void MergingSearcher::queueStateForMerge(ExecutionState &es, uint64_t mergePoint
 ExecutionState &MergingSearcher::selectState() {
 	int loop=0;
   while (!baseSearcher->empty()) {
+
     ExecutionState &es = baseSearcher->selectState();
     uint64_t mp = getMergePoint(es);
     if (mp) {
-		klee_warning("inside mp state=%lx try merge %lx, loop=%d\n",&es,mp,loop);	
+		klee_warning("inside mp state=%lx, try merge %lx, loop=%d\n",&es,mp,loop);	
 		loop++;
+
 		baseSearcher->removeState(&es, &es);
 		statesAtMerge.insert(std::make_pair(&es, mp));
 	} else {
@@ -473,6 +509,7 @@ ExecutionState &MergingSearcher::selectState() {
         ExecutionState *mergeWith = *it;
         
         if (executor.merge(*base, *mergeWith)) {
+		klee_warning("merged %lx with %lx",base,mergeWith);
           mergeCount += 1;
           toErase.insert(mergeWith);
         }
@@ -502,7 +539,7 @@ ExecutionState &MergingSearcher::selectState() {
 		  ++base->pc;
 	  }else{
 		  klee_warning("%lx: reset try_merge=false",base);
-		  ++base->pc;
+		//  ++base->pc;
 		  base->try_merge=false;
 	  }
 	  baseSearcher->addState(base);
@@ -515,7 +552,6 @@ ExecutionState &MergingSearcher::selectState() {
     std::cerr << "-- merge complete, continuing --\n";
   }
   
-klee_warning("before selectState()");	
   return selectState();
 }
 

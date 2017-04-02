@@ -203,7 +203,8 @@ protected:
     std::string getUniqueVarName(const std::string &name);
 
 public:
-    enum AddressType {
+	bool earlyExit;
+	enum AddressType {
         VirtualAddress, PhysicalAddress, HostAddress
     };
 

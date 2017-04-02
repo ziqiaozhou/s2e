@@ -1768,7 +1768,7 @@ uintptr_t S2EExecutor::executeTranslationBlockKlee(
 
     assert(state->m_active && !state->m_runningConcrete);
     assert(state->stack.size() == 1);
-    assert(state->pc == m_dummyMain->instructions);
+    //assert(state->pc == m_dummyMain->instructions);
 
     ++state->m_stats.m_statTranslationBlockSymbolic;
 

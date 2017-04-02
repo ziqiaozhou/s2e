@@ -252,7 +252,8 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
 		filename<<".err";
 	}
 
-	std::string path = s2e()->getOutputFilename(filename.str());
+	state->pushOb(nameStr,val);
+	/*std::string path = s2e()->getOutputFilename(filename.str());
 	std::string error;
 	llvm::raw_fd_ostream *f = new llvm::raw_fd_ostream(path.c_str(), error, llvm::raw_fd_ostream::F_Binary| llvm::raw_fd_ostream::F_Append);
 
@@ -261,7 +262,8 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
 		exit(-1);
 	}
     
-	state->pushOb(nameStr,val);
+
+
 	*f
 	<<"(Eq "<< nameStr << "  "
                                <<val << ")\n";
@@ -273,7 +275,7 @@ void BaseInstructionsOb::printOb(S2EExecutionState *state)
         *f<< nameStr << " -concrete: "
                                    << concrete << '\n';
     }
-	delete f;
+	delete f;*/
 }
 
 void BaseInstructionsOb::printMemory(S2EExecutionState *state)
@@ -477,17 +479,19 @@ void BaseInstructionsOb::assume(S2EExecutionState *state)
         bool res = solver->mustBeTrue(query.negateExpr(), truth);
         if (!res || truth) {
             isValid = false;
-        }
-    }
+		}
+	}
+	if (!isValid) {
+		state->earlyExit=true;
+		std::stringstream ss;
+		ss << "BaseInstructionsOb: specified assume expression cannot be true. "
+			<< boolExpr;
+		g_s2e->getExecutor()->terminateStateEarly(*state, ss.str());
+	}
 
-    if (!isValid) {
-        std::stringstream ss;
-        ss << "BaseInstructionsOb: specified assume expression cannot be true. "
-                << boolExpr;
-        g_s2e->getExecutor()->terminateStateEarly(*state, ss.str());
-    }
+	state->addConstraint(boolExpr);
 
-    state->addConstraint(boolExpr);
+
 }
 #endif
 

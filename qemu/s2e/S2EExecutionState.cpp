@@ -117,6 +117,7 @@ S2EExecutionState::S2EExecutionState(klee::KFunction *kf) :
 {
     //XXX: make this a struct, not a pointer...
     m_timersState = new TimersState;
+	earlyExit=false;
     m_dirtyMaskObject = NULL;
 }
 
@@ -238,6 +239,7 @@ void S2EExecutionState::addressSpaceChange(const klee::MemoryObject *mo,
                                            " index=" << coords.second << "\n";
 #endif
                 S2ETLBEntry *entry = &cpu->s2e_tlb_table[coords.first][coords.second];
+
                 assert(entry->objectState == (void*) oldState);
                 assert(newState);
                 entry->objectState = newState;
@@ -1766,7 +1768,7 @@ bool S2EExecutionState::merge(const ExecutionState &_b)
                   CPU_OFFSET(current_tb) - CPU_CONC_LIMIT)) {
             if(DebugLogStateMerge)
                 s << "merge failed: different concrete cpu state" << "\n";
-            return false;
+          //ziqiao  return false;
         }
     }
 
@@ -1812,7 +1814,7 @@ bool S2EExecutionState::merge(const ExecutionState &_b)
                 if(DebugLogStateMerge)
                     s << "merge failed: different shared-concrete objects "
                       << '\n';
-                return false;
+               //ziqiao return false;
             }
             mutated.insert(mo);
         }
